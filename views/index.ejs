@@ -1,0 +1,237 @@
+<html>
+
+<head>
+    <title>Sockets</title>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script type="text/javascript" src="/socket.io/socket.io.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
+        crossorigin="anonymous">
+        <link href="https://fonts.googleapis.com/css?family=Freckle+Face" rel="stylesheet">
+    <!-- <link rel="stylesheet" type="text/html" href='../static/style.css'> -->
+    <style>
+        #chatbox {
+            height: 350px;
+            border: 1px solid black;
+            overflow-y: scroll;
+        }
+        
+        .right {
+            margin-top: 30px;
+        }
+
+        body{
+            font-family: 'Freckle Face', cursive;
+        }
+
+        .col-md-12 h1{
+            color:lightseagreen;
+        }
+    </style>
+
+    <script type="text/javascript">
+        var user;
+        var word;
+        var theme;
+        var guess;
+        var wordCount;
+
+        $(document).ready(function () {
+
+            var socket = io(); //1
+            user = promptUser();
+
+            socket.emit("got_a_new_user", user);
+
+            $('form').submit(function (e) {
+                e.preventDefault();
+                var message = $('form').serializeArray();
+                $('#message').val("");
+                socket.emit('message', user, message);
+            });
+
+            socket.on('game_creator', function () {
+                word = createWord();
+                theme = createTheme();
+                socket.emit("got_a_new_word", word);
+                socket.emit("got_a_new_theme", theme);
+            })
+
+
+            socket.on('broad', function (data) {
+                $('#chatbox').empty();
+                for (let i = 0; i < data.length; i++) {
+                    $('#chatbox').append(data[i] + "<br>");
+                }
+            })
+
+            socket.on('new_user_join', function (data) {
+                $('#chatbox').append(data + " joined<br>");
+            })
+
+            socket.on('new_word_created', function (data) {
+                // console.log(data);
+                $('#wordGuess').html(data);
+            })
+
+            socket.on('broadcast_word', function (data) {
+                word = data;
+                wordCount = data.length;
+                // console.log(word + "ITS A WOOORD");
+                $('#wordGuess').html(data);
+            })
+
+            socket.on('new_theme_created', function (theme) {
+                $('#wordTheme').html(theme);
+                console.log(theme);
+            })
+
+            socket.on('broadcast_theme', function (theme) {
+                console.log(theme);
+                $('#wordTheme').html(theme);
+            })
+
+            $('#answer').on('click', function () {
+                var guess = guessing_answer();
+
+                // console.log(guess);
+                // console.log(word + "THIS IS A WORD");
+                if (guess.toLowerCase() == word.toLowerCase()) {
+                    console.log("CORECT WORD");
+                    socket.emit('correct_answer', guess, user);
+                }
+                else {
+                    socket.emit('incorrect_answer', guess, user);
+                    console.log('INCORRECT');
+                }
+            })
+
+            socket.on('correct_answer', function (data) {
+
+                $('body').html(`<div class="container">
+                    <div class="row text-center">
+                        <div class="col-md-12">
+                        <h1>${data}</h1>
+                    </div></div></div>`);
+            })
+
+            socket.on('incorrect_answer', function (data) {
+                $('#chatbox').empty();
+                for (let i = 0; i < data.length; i++) {
+                    $('#chatbox').append(data[i]);
+                }
+            })
+        })
+
+        function promptUser() {
+            var user = prompt("What is your name?");
+            if (user == null || user == "") {
+                txt = "User cancelled the prompt.";
+                alert(txt);
+                promptUser();
+            } else {
+                return user;
+            }
+        }
+        function createWord() {
+            var word = prompt("What is your word?");
+            if (word == null || word == "") {
+                txt = "User cancelled the prompt.";
+                alert(txt);
+                createWord();
+            } else {
+                return word;
+            }
+        }
+        function createTheme() {
+            var theme = prompt("What is the theme of the word?");
+            if (theme == null || theme == "") {
+                txt = "User cancelled the prompt.";
+                alert(txt);
+                createTheme();
+            } else {
+                return theme;
+            }
+        }
+
+        function guessing_answer() {
+            var guess = prompt('What is your guess answer?');
+            console.log(guess);
+            if (guess == null || guess == "") {
+                txt = "Please type the word";
+                alert(txt);
+                guessing_answer();
+            } else {
+                return guess;
+            }
+        }
+        console.log(theme);
+        console.log(word);
+    </script>
+</head>
+
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12">
+                <h5>192.168.0.166:8000</h5>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <h3>
+                    Word Guessing Game
+                </h3>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <div id="chatbox"></div>
+                <form id="message" method="post">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <input type="text" class="form-control" id="message" name="message">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 text-right">
+                            <input type="submit" value="Send" class="btn btn-info form-control">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="col-md-6 right">
+                <div class="row text-center">
+                    <div class="col-md-12">
+                        <h1>Word</h1>
+                    </div>
+                </div>
+                <div class="row text-center">
+                    <div class="col-md-12">
+                        <span id="word">_ _ _ _ _ _</span>
+                        <!-- <p id="wordGuess"></p> -->
+                    </div>
+                </div>
+                <br>
+                <div class="row text-center">
+                    <div class="col-md-12">
+                        <h1>Theme</h1>
+                    </div>
+                </div>
+                <br>
+                <div class="row text-center">
+                    <div class="col-md-12">
+                        <h3 id="wordTheme"></h3>
+                    </div>
+                </div>
+                <div class="row text-center">
+                    <button id="answer" class="btn btn-info form-control">Answer</button>
+                </div>
+
+            </div>
+        </div>
+
+
+    </div>
+</body>
+
+</html>
